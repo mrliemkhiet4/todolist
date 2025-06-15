@@ -6,19 +6,32 @@ import TasksPage from '../components/TasksPage';
 import ProjectsPage from '../components/ProjectsPage';
 import AnalyticsPage from '../components/AnalyticsPage';
 import SettingsPage from '../components/SettingsPage';
+import CalendarPage from '../components/CalendarPage';
+import TeamPage from '../components/TeamPage';
 import { useTaskStore } from '../store/taskStore';
 import { useAuthStore } from '../store/authStore';
 
 const DashboardPage = () => {
   const { fetchTasks, fetchProjects } = useTaskStore();
-  const { user } = useAuthStore();
+  const { user, fetchProfile } = useAuthStore();
 
   useEffect(() => {
-    if (user) {
-      fetchTasks();
-      fetchProjects();
-    }
-  }, [user, fetchTasks, fetchProjects]);
+    const initializeDashboard = async () => {
+      if (user) {
+        try {
+          // Ensure profile is loaded
+          await fetchProfile();
+          // Fetch projects first, then tasks
+          await fetchProjects();
+          await fetchTasks();
+        } catch (error) {
+          console.error('Dashboard initialization error:', error);
+        }
+      }
+    };
+
+    initializeDashboard();
+  }, [user, fetchTasks, fetchProjects, fetchProfile]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -29,7 +42,9 @@ const DashboardPage = () => {
           <Routes>
             <Route path="/" element={<TasksPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/team" element={<TeamPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
