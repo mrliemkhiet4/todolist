@@ -17,6 +17,12 @@ interface AuthState {
   fetchProfile: () => Promise<void>;
 }
 
+// Email validation regex
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -35,6 +41,10 @@ export const useAuthStore = create<AuthState>()(
           });
 
           if (error) {
+            // Handle specific error cases
+            if (error.message.includes('Email not confirmed')) {
+              throw new Error('Please confirm your email address by clicking the link in the email we sent you.');
+            }
             throw new Error(error.message);
           }
 
@@ -64,6 +74,9 @@ export const useAuthStore = create<AuthState>()(
           if (!email.trim()) {
             throw new Error('Email is required');
           }
+          if (!isValidEmail(email.trim())) {
+            throw new Error('Please enter a valid email address');
+          }
           if (password.length < 6) {
             throw new Error('Password must be at least 6 characters');
           }
@@ -76,19 +89,23 @@ export const useAuthStore = create<AuthState>()(
                 name: name.trim(),
                 full_name: name.trim(),
               },
-              emailRedirectTo: undefined, // Disable email confirmation
+              emailRedirectTo: window.location.origin,
             },
           });
 
           if (error) {
+            // Handle specific error cases
+            if (error.message.includes('email_address_invalid')) {
+              throw new Error('Please enter a valid email address');
+            }
             throw new Error(error.message);
           }
 
           if (data.user) {
             set({ user: data.user });
             
-            // Wait a moment for the trigger to create the profile
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Wait longer for the trigger to create the profile
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Try to fetch the profile, create it manually if it doesn't exist
             try {
@@ -108,6 +125,8 @@ export const useAuthStore = create<AuthState>()(
               if (profileCreateError) {
                 console.warn('Manual profile creation failed:', profileCreateError);
               } else {
+                // Wait a bit more and try to fetch again
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 await get().fetchProfile();
               }
             }
